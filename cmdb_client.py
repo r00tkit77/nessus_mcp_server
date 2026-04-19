@@ -9,10 +9,10 @@ DB_PATH = os.getenv("DB_PATH", "cmdb.db")
 
 # Seed data: the 4 Docker target containers used in the lab environment
 _SEED_ASSETS = [
-    (1, "172.17.0.2", "target-apache", "Linux", "Web Server",   "dev", "high",   "Arnav",  "arnavcy77@gmail.com",  "WebOps"),
-    (2, "172.17.0.3", "target-mysql",  "Linux", "Database",     "dev", "high",   "Arnav",   "arnavcy77@gmail.com",    "DataOps"),
-    (3, "172.17.0.4", "target-php",    "Linux", "App Server",   "dev", "medium", "Dhivyan",  "dhivyan227@gmail.com",  "AppDev"),
-    (4, "172.17.0.5", "target-redis",  "Linux", "Cache Server", "dev", "medium", "Dhivyan", "dhivyan227@gmail.com",   "AppDev"),
+    (1, "172.17.0.2", "target-apache", "Linux", "Web Server",   "dev", "high",   "Arnav",  "arnav@example.com",  "WebOps"),
+    (2, "172.17.0.3", "target-mysql",  "Linux", "Database",     "dev", "high",   "Arnav",   "arnav@example.com",    "DataOps"),
+    (3, "172.17.0.4", "target-php",    "Linux", "App Server",   "dev", "medium", "Dhivyan",  "dhivyan@example.com",  "AppDev"),
+    (4, "172.17.0.5", "target-redis",  "Linux", "Cache Server", "dev", "medium", "Dhivyan", "dhivyan@example.com",   "AppDev"),
 ]
 
 
