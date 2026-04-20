@@ -1,7 +1,7 @@
 
-# CMDB-NVD-NESSUS MCP Server
+# NESSUS MCP Server
 
-A **Model Context Protocol (MCP) server** for end-to-end vulnerability management automation. This system integrates Tenable Nessus scanning with CVE enrichment from NIST NVD, threat intelligence from CISA KEV, asset context from a CMDB, and **LLM-driven reasoning** to prioritize and report vulnerabilities.
+A **Model Context Protocol (MCP) server** for vulnerability management automation. This system integrates Tenable Nessus scanning with CVE enrichment from NIST NVD, threat intelligence from CISA KEV, asset context from a CMDB, and **LLM-driven reasoning** to prioritize and report vulnerabilities.
 
 ---
 
@@ -19,16 +19,14 @@ This MCP server enables an AI agent (e.g., Claude Desktop) to:
 
 ---
 
-## Data Flow
+## Work Flow
 
 1. Launch Nessus scan
-2. Retrieve scan results (hosts + vulnerabilities + CVEs)
-3. Extract and deduplicate CVE IDs
-4. Enrich CVEs using NVD API
-5. Check CVEs against CISA KEV catalog
-6. Map findings to CMDB assets (owner, team, criticality)
-7. Generate structured vulnerability insights
-8. Send reports to asset owners via email
+2. Process scan results (hosts + vulnerabilities + CVEs)
+3. Enrich CVEs using NVD API
+4. Check CVEs against CISA KEV catalog
+5. Generate structured report with vulnerability insights, misconfigurations, recommendations, etc.
+6. Send reports to respective asset owners via email
 
 ---
 
@@ -39,10 +37,10 @@ This MCP server enables an AI agent (e.g., Claude Desktop) to:
 cmdb-nvd-nessus-mcp/
 ├── mcp_server.py       # MCP server (tool definitions + orchestration)
 ├── nessus_scan.py      # Nessus API client (scan + results)
-├── nvd_client.py       # NVD CVE enrichment client
-├── kev_client.py       # CISA KEV threat intelligence client
+├── nvd_client.py       # NVD API client (CVEs enrichment)
+├── kev_client.py       # CISA KEV client (threat Intel)
 ├── cmdb_client.py      # SQLite CMDB (asset inventory)
-├── email_client.py     # SMTP email reporting system
+├── email_client.py     # SMTP email client
 ├── .env                # Environment variables (API keys, config)
 └── README.md
 
