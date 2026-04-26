@@ -1,7 +1,6 @@
-
 # NESSUS MCP Server
 
-A **Model Context Protocol (MCP) server** for vulnerability management automation. This system integrates Tenable Nessus scanning with CVE enrichment from NIST NVD, threat intelligence from CISA KEV, asset context from a CMDB, and **LLM-driven reasoning** to prioritize and report vulnerabilities.
+A **Model Context Protocol (MCP)** server that converts raw vulnerability scan data into **prioritized, root-cause–based remediation actions**. It integrates Tenable Nessus, NVD enrichment, CISA KEV intelligence, and CMDB context to produce **actionable fix queues instead of CVE-heavy reports**.
 
 ---
 
@@ -9,61 +8,125 @@ A **Model Context Protocol (MCP) server** for vulnerability management automatio
 
 This MCP server enables an AI agent (e.g., Claude Desktop) to:
 
-* Launch and monitor **Nessus vulnerability scans**
-* Fetch and process scan results across multiple assets
-* Enrich vulnerabilities using **NVD (CVSS, severity, CWE, references)**
-* Identify actively exploited vulnerabilities via **CISA KEV**
-* Map vulnerabilities to assets using a **CMDB (ownership, criticality, team)**
-* Perform **LLM-driven analysis and prioritization**
-* Generate and send **structured vulnerability reports** via email
+* Execute and monitor Nessus vulnerability scans
+* Extract vulnerabilities and CVEs at plugin level (accurate CVE mapping)
+* Enrich vulnerabilities using NVD (CVSS, severity, metadata)
+* Identify actively exploited vulnerabilities (KEV)
+* Correlate vulnerabilities with assets using CMDB (ownership, exposure, criticality)
+* Transform findings into root-cause fix actions
+* Generate prioritized remediation reports and send them to owners via email
 
 ---
 
 ## Work Flow
 
-1. Launch Nessus scan
-2. Process scan results (hosts + vulnerabilities + CVEs)
-3. Enrich CVEs using NVD API
-4. Check CVEs against CISA KEV catalog
-5. Generate structured report with vulnerability insights, misconfigurations, recommendations, etc.
-6. Send reports to respective asset owners via email
+1. Execute or retrieve Nessus scan results
+2. Normalize findings (remove noise, extract CVEs correctly)
+3. Enrich CVEs with NVD metadata
+4. Correlate CVEs with CISA KEV (exploitation signal)
+5. Attach asset context from CMDB (owner, exposure, role)
+6. Apply transformation process to cluster CVEs into remediation action items
+8. Generate prioritized action report
+9. Send reports to asset owners
+
+---
+
+## Transformation (Core Output Processing)
+
+This system converts raw scan output into remediation actions through a structured pipeline:
+
+1. **Normalization**
+
+   * Extract vulnerabilities per host from Nessus
+   * Fetch plugin-level details to accurately retrieve CVEs
+   * Remove informational findings and duplicate noise
+   * Build structured dataset: `host → vulnerabilities → CVEs`
+
+2. **Enrichment**
+
+   * Add NVD data (CVSS score, severity, description, publish date)
+   * Tag CVEs present in CISA KEV (actively exploited)
+   * Attach CMDB context (team, asset role, exposure, criticality)
+
+3. **Scoring**
+
+   * Compute priority score using:
+
+     * CVSS (non-linear buckets)
+     * KEV presence (highest weight)
+     * Exposure (external vs internal)
+     * Asset criticality
+     * Blast radius (number of affected hosts)
+     * Vulnerability age
+   * Assign SLA: **IMMEDIATE / URGENT / SCHEDULED / BACKLOG**
+
+4. **Root Cause Clustering**
+
+   * Group findings by:
+
+     * Software family (Apache, MySQL, Redis, etc.)
+     * Affected host set
+   * Collapse multiple CVEs and plugins into single fix actions
+   * Enforce rule: one cluster = one remediation task
+
+5. **Action Generation**
+
+   * Convert clusters into fix-oriented tasks:
+
+     * Example: multiple Apache CVEs → “Upgrade Apache HTTP Server”
+   * Each action includes:
+
+     * Affected hosts (explicit list)
+     * Priority score and SLA
+     * Minimal steps: contain → fix → verify
+     * Deduplication of overlapping fixes
+
+6. **Rendering**
+
+   * Structured JSON is passed to LLM
+   * LLM generates:
+
+     * Ranked action queue
+     * Human-readable summaries
+     * Email-ready reports
+
+Final Output:
+A short list of high-impact fixes replacing hundreds of individual CVEs
 
 ---
 
 ## Architecture
 
-```
-
+```id="arch01"
 cmdb-nvd-nessus-mcp/
-├── mcp_server.py       # MCP server (tool definitions + orchestration)
-├── nessus_scan.py      # Nessus API client (scan + results)
-├── nvd_client.py       # NVD API client (CVEs enrichment)
-├── kev_client.py       # CISA KEV client (threat Intel)
-├── cmdb_client.py      # SQLite CMDB (asset inventory)
-├── email_client.py     # SMTP email client
+├── mcp_server.py       # MCP server (tool orchestration + scoring + clustering)
+├── nessus_scan.py      # Nessus API client (scan + plugin-level CVE extraction)
+├── nvd_client.py       # NVD API client (CVSS + metadata enrichment)
+├── kev_client.py       # CISA KEV client (exploitation intelligence)
+├── cmdb_client.py      # SQLite CMDB (asset context)
+├── email_client.py     # SMTP email delivery
 ├── .env                # Environment variables (API keys, config)
 └── README.md
-
 ```
 
 ---
 
 ## Available MCP Tools
 
-| Tool                          | Description                                                   | Example Prompt                                  |
-| ----------------------------- | ------------------------------------------------------------- | ----------------------------------------------- |
-| `nessus_launch_scan`          | Launch predefined Nessus scan                                 | "Start vulnerability scan"                      |
-| `nessus_scan_status`          | Check current scan status                                     | "Is the scan complete?"                         |
-| `nessus_get_results`          | Fetch scan results and CVEs                                   | "Get scan results"                              |
-| `nessus_test_connection`      | Validate Nessus API connectivity                              | "Test Nessus connection"                        |
-| `nvd_enrich_cves`             | Enrich CVEs with NVD data                                     | "Enrich CVEs with CVSS details"                 |
-| `nvd_get_cve`                 | Get full details for a CVE                                    | "Explain CVE-2021-41773"                        |
-| `kev_check`                   | Check CVEs against KEV (actively exploited)                   | "Which CVEs are exploited?"                     |
-| `kev_catalog_summary`         | Get KEV dataset metadata                                      | "Show KEV summary"                              |
-| `cmdb_get_assets`             | Retrieve all CMDB assets                                      | "List all assets"                               |
-| `generate_summary`            | Generate structured vulnerability report input                | "Summarize findings"                            |
-| `email_send_owner_reports`    | Send per-asset vulnerability reports                          | "Send reports to owners"                        |
-| `email_test_connection`       | Validate SMTP configuration                                   | "Test email setup"                              |
+| Tool                       | Description                            | Example Prompt              |
+| -------------------------- | -------------------------------------- | --------------------------- |
+| `nessus_launch_scan`       | Launch predefined Nessus scan          | "Start vulnerability scan"  |
+| `nessus_scan_status`       | Check current scan status              | "Is the scan complete?"     |
+| `nessus_get_results`       | Fetch scan results with CVE extraction | "Get scan results"          |
+| `nessus_test_connection`   | Validate Nessus API connectivity       | "Test Nessus connection"    |
+| `nvd_enrich_cves`          | Enrich CVEs with CVSS + metadata       | "Enrich CVEs with details"  |
+| `nvd_get_cve`              | Retrieve detailed CVE info             | "Explain CVE-2021-41773"    |
+| `kev_check`                | Identify actively exploited CVEs       | "Which CVEs are in KEV?"    |
+| `kev_catalog_summary`      | KEV dataset summary                    | "Show KEV summary"          |
+| `cmdb_get_assets`          | Fetch asset inventory                  | "List all assets"           |
+| `generate_summary`         | Generate prioritized fix actions       | "Summarize vulnerabilities" |
+| `email_send_owner_reports` | Send reports to asset owners           | "Send reports to owners"    |
+| `email_test_connection`    | Validate SMTP configuration            | "Test email setup"          |
 
 ---
 
@@ -71,21 +134,21 @@ cmdb-nvd-nessus-mcp/
 
 ### Security Guardrails
 
-* **Environment-based secrets** – API keys (Nessus, NVD, SMTP) stored securely in `.env`
-* **Trusted data sources** – CVEs from NVD, KEV from official CISA feed
-* **No arbitrary execution** – MCP tools restrict operations to predefined logic
-* **API-based authentication** – Nessus accessed via API keys (no session handling)
+* API keys stored securely in `.env`
+* Only trusted sources used (NVD, KEV, Nessus)
+* No arbitrary command execution via MCP tools
+* Strict API-based authentication for Nessus
 
 ---
 
 ### Operational Guardrails
 
-* **NVD rate limiting** – adaptive delay based on API key usage
-* **KEV caching** – reduces repeated external requests
-* **Filtered scan results** – informational findings excluded
-* **Bounded enrichment** – CVE processing capped per request
-* **Structured outputs** – consistent JSON responses for AI consumption
-* **Auto-initialized CMDB** – ensures asset inventory is always available
+* NVD rate limiting handled with adaptive delays
+* KEV data cached to reduce repeated requests
+* Informational findings filtered out early
+* CVE enrichment capped to avoid API overload
+* Consistent structured JSON outputs
+* CMDB auto-initialized for guaranteed asset context
 
 ---
 
@@ -93,46 +156,40 @@ cmdb-nvd-nessus-mcp/
 
 ### ❗ Nessus Dependency
 
-* Requires Nessus running locally (`https://localhost:8834`)
+* Requires local or accessible Nessus instance
 * Scan must be preconfigured (SCAN_ID)
 
 ---
 
 ### ❗ API Rate Limits
 
-* NVD API limits can slow CVE enrichment
-* Large scans may introduce latency
+* NVD API can slow enrichment for large scans
+* High-volume environments require batching
 
 ---
 
 ### ❗ KEV Data Freshness
 
-* KEV data is cached and not strictly real-time
-* May miss newly added exploited vulnerabilities temporarily
+* KEV feed is cached (not strictly real-time)
+* Newly exploited CVEs may have slight delay
 
 ---
 
 ### ❗ No Async Processing
 
-* No job queue or background workers
-* Entire workflow runs synchronously
+* Entire pipeline runs synchronously
+* No background workers or job queue
 
 ---
 
 ### ❗ LLM Dependency
 
-* Accuracy of prioritization depends on LLM reasoning
-* Potential for hallucinations if prompts are weak
+* Final report clarity depends on LLM output quality
+* Strict prompting required to avoid hallucinations
 
 ---
 
 ### ❗ Limited Scalability
 
-* CVE enrichment capped per request (max ~50 CVEs)
-* Large environments require batching or optimization
-
----
-
-
-
-
+* CVE enrichment capped (~50 per batch)
+* Large-scale deployments need optimization
